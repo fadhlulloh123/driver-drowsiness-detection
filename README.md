@@ -1,150 +1,136 @@
-# Driver Drowsiness Detection
+# Driver Drowsiness Detection System
 
-A browser-based driver drowsiness monitoring prototype built with **JavaScript**, **MediaPipe Face Mesh**, and the **Eye Aspect Ratio (EAR)** algorithm. The application uses facial landmarks from a webcam stream to estimate eye closure, track blink and yawn events, and trigger visual and audio alerts.
+![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)
+![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
+![MediaPipe](https://img.shields.io/badge/MediaPipe-FACE_MESH-0097A7?style=for-the-badge&logo=google&logoColor=white)
 
-> **Academic prototype notice:** This project is intended for learning, experimentation, and demonstration. It has not been validated for real-world driving or certified as a vehicle safety system. Never rely on it as a substitute for adequate rest, safe driving practices, or certified driver-assistance technology.
+A browser-based academic prototype that explores driver drowsiness monitoring using **MediaPipe Face Mesh**, the **Eye Aspect Ratio (EAR)**, and mouth-opening cues. The application processes webcam frames in the browser, displays the current status and counters, and plays an audio alert when configured warning conditions are reached.
+
+> **Project status:** Academic prototype. This project has not been validated for real-world vehicle safety and must not be used as a substitute for driver rest or certified safety systems.
+
+## Application Preview
+
+![Screenshot of the Driver Drowsiness Detection web application](assets/driver-drowsiness-detection-preview.png)
+
+The interface shows the camera preview, status indicator, eye-closure duration, blink counter, yawn counter, and START/STOP controls.
 
 ## Features
 
-- **Real-time webcam input** through the browser camera.
-- **Facial landmark tracking** using MediaPipe Face Mesh.
-- **Eye closure estimation** using EAR calculated from six landmarks per eye.
-- **EAR smoothing** with a short moving-average buffer to reduce frame-to-frame noise.
-- **Blink counter** for short eye-closure events.
-- **Yawn indicator** based on a mouth-opening ratio (MAR) heuristic.
-- **Three alert states:** `NORMAL`, `WARNING`, and `DANGER`.
-- **Audio alerts** with separate warning and danger sounds.
-- **Simple controls** to start and stop camera processing.
+- **Face landmark analysis:** Uses MediaPipe Face Mesh to obtain facial landmarks from the webcam feed.
+- **Eye closure estimation with EAR:** Calculates an Eye Aspect Ratio from selected eye landmarks and smooths recent EAR values.
+- **Mouth-opening cue with MAR:** Calculates a Mouth Aspect Ratio as a simple indicator associated with yawning.
+- **Status indicators:** Displays `NORMAL`, `WASPADA` (warning), or `BAHAYA` (danger) based on the current detection logic.
+- **Blink and yawn counters:** Tracks short eye closures and sustained mouth-opening events according to the configured thresholds.
+- **Audio alerts:** Includes warning and danger alarm audio files.
+- **Browser-based processing:** The project code sends webcam frames to the in-browser MediaPipe pipeline; it does not implement a backend endpoint for uploading camera frames.
+- **Start/stop controls:** Lets the user start or stop camera-based detection.
 
 ## How It Works
 
-### 1. Face landmarks
+### 1. Eye Aspect Ratio (EAR)
 
-MediaPipe Face Mesh estimates facial landmarks from the webcam image. The application uses selected eye landmarks and mouth landmarks to calculate geometric ratios. The current configuration processes one face at a time.
+The application estimates eye openness using six landmarks for each eye. The EAR is calculated from the vertical distances between eyelid landmarks divided by the horizontal distance across the eye:
 
-### 2. Eye Aspect Ratio (EAR)
+$$
+\mathrm{EAR} = \frac{\|P_2-P_6\| + \|P_3-P_5\|}{2\|P_1-P_4\|}
+$$
 
-EAR estimates how open the eye is by comparing vertical eye distances with the horizontal eye width:
+When the eyes close, the vertical distances typically decrease and the EAR tends to become smaller. The application compares the smoothed EAR with a configurable threshold to estimate eye closure duration.
 
-\[
-EAR = \frac{\lVert p_2-p_6\rVert + \lVert p_3-p_5\rVert}{2\lVert p_1-p_4\rVert}
-\]
+### 2. Mouth Aspect Ratio (MAR)
 
-A lower EAR value indicates that the eye may be closed. This implementation averages the left- and right-eye EAR values, smooths recent measurements, and compares the result with a configurable threshold.
+The project also calculates a simple mouth-opening ratio from upper/lower lip landmarks and the horizontal mouth width. Sustained mouth opening is counted as a yawn-related event according to the configured time threshold. Mouth opening alone is not definitive proof of a yawn.
 
-### 3. Alert timing
+### 3. Current Detection Parameters
 
-The application measures how long the EAR stays below the configured threshold. The current code uses a warning threshold of **500 ms** and a danger threshold of **1,000 ms**. These are prototype settings, not validated driving-safety thresholds, and should be calibrated and tested before any research conclusions are drawn.
+The following values are defined in `script.js` and can be adjusted for experimentation:
 
-### 4. Mouth-opening ratio (MAR)
+| Parameter | Current value | Purpose |
+|---|---:|---|
+| EAR threshold | `0.16` | Threshold used to estimate eye closure |
+| MAR threshold | `0.45` | Threshold used for mouth-opening events |
+| Warning duration | `500 ms` | Eye-closure duration for the warning state |
+| Danger duration | `1000 ms` | Eye-closure duration for the danger state |
+| Yawn-related duration | `1200 ms` | Sustained mouth-opening duration before counting an event |
+| Yawn count limit | `3` | Count that triggers the danger state |
 
-The application estimates mouth opening using the distance between selected upper/lower lip landmarks divided by the distance between two horizontal mouth landmarks. A sustained value above the configured MAR threshold increments the yawn counter. Reaching the configured count triggers a danger alert in the current implementation.
+These are experimental heuristic settings, not universal or scientifically validated safety thresholds. Results can vary with camera placement, lighting, face position, and individual facial characteristics.
 
-EAR and MAR are heuristic indicators. Eye shape, head pose, camera placement, lighting, glasses, and individual differences can affect their measurements.
+## Tech Stack
 
-## Technology Stack
+- **Frontend:** HTML5, CSS3, vanilla JavaScript
+- **Computer vision:** MediaPipe Face Mesh
+- **Camera and rendering:** MediaPipe Camera Utils and HTML Canvas
+- **Audio:** HTML audio playback
 
-- **HTML5** — page structure and webcam/canvas elements
-- **CSS3** — interface styling and alert-state styling
-- **JavaScript** — detection flow, EAR/MAR calculations, counters, and audio control
-- **MediaPipe Face Mesh** — facial landmark estimation
-- **MediaPipe Camera Utils** — browser camera frame handling
-- **jsDelivr CDN** — loads the MediaPipe JavaScript libraries
-
-This repository is a static front-end project. It does not include a custom backend, database, model-training pipeline, or persistent user-data storage.
+No application backend or database is required for the current prototype. The MediaPipe scripts are loaded from a CDN, so an internet connection is needed when loading the app unless those dependencies are configured locally.
 
 ## Project Structure
 
 ```text
-driver-drowsiness-detection/
-├── assets/
-│   ├── danger-alarm.mp3
-│   ├── warning-alarm.mp3
-│   └── README.md
+.
 ├── index.html
-├── script.js
 ├── style.css
-├── .gitignore
+├── script.js
+├── alarm-sirene-ringan.mp3
+├── alarm-sirene-keras.mp3
+├── assets/
+│   └── driver-drowsiness-detection-preview.png
 └── README.md
 ```
 
-## Getting Started
+## Run Locally
 
-### Requirements
+A local HTTP server is recommended rather than opening `index.html` directly with a `file://` URL. The browser must be allowed to access your webcam.
 
-- A modern browser with webcam support (for example, a recent version of Chrome or Firefox).
-- A working webcam and permission to use it.
-- An internet connection to load the MediaPipe libraries from the CDN.
-- A local web server or an HTTPS origin. Browsers generally restrict camera access on insecure origins; `localhost` is suitable for local development.
+### Option 1: Python HTTP server
 
-### Run locally on Linux
+1. Clone the repository:
 
-1. Download or clone this repository.
-2. Open a terminal in the project directory.
-3. Start a simple local web server:
+   ```bash
+   git clone https://github.com/fadhlulloh123/driver-drowsiness-detection.git
+   cd driver-drowsiness-detection
+   ```
+
+2. Start the server:
 
    ```bash
    python3 -m http.server 8000
    ```
 
-4. Open [http://localhost:8000](http://localhost:8000) in your browser.
-5. Allow camera access, then select **START**. Select **STOP** to stop processing and silence the alerts.
+3. Open [http://localhost:8000](http://localhost:8000) in your browser.
+4. Allow camera access and select **START**. Select **STOP** to stop detection.
 
-You can also open the folder in Visual Studio Code and use a local development server extension such as Live Server.
+### Option 2: VS Code Live Server
 
-> Opening `index.html` directly as a `file://` URL may prevent camera access from working correctly. Use `localhost` or HTTPS instead.
+1. Clone and open the repository in Visual Studio Code.
+2. Install the **Live Server** extension if it is not already installed.
+3. Open `index.html` with Live Server.
+4. Allow webcam access in the browser and select **START**.
 
-## Configuration
+## Limitations and Responsible Use
 
-The main detection parameters are defined near the top of `script.js`:
+- This is an academic prototype, not a certified driver-safety product.
+- Detection depends on camera quality, lighting, face visibility, and threshold configuration.
+- EAR/MAR thresholds may need calibration and can produce false positives or false negatives.
+- The project has not been evaluated through a formal dataset-based performance study or real-world driving validation.
+- Do not use this application as the sole basis for deciding whether someone is safe to drive.
+- Confirm that the included alarm audio files may be redistributed before publishing the repository publicly.
 
-| Parameter | Current value | Purpose |
-|---|---:|---|
-| `EAR_THRESHOLD` | `0.16` | Eye-closure threshold |
-| `MAR_THRESHOLD` | `0.45` | Mouth-opening threshold |
-| `WARNING_TIME` | `500` ms | Time below EAR threshold before warning |
-| `DANGER_TIME` | `1000` ms | Time below EAR threshold before danger |
-| `YAWN_TIME` | `1200` ms | Sustained mouth-opening duration used by the yawn heuristic |
-| `MAX_YAWN_LIMIT` | `3` | Yawn count that triggers a danger alert |
-| `TARGET_FPS` | `30` | Target processing rate |
+## Future Improvements
 
-These are the values currently present in the source code, not recommended or medically validated settings. Do not interpret them as proven indicators of driver fatigue.
-
-## Privacy Notes
-
-The project does not implement an application backend or cloud-storage feature. Webcam frames are passed to the browser-side MediaPipe code for processing. The application downloads third-party JavaScript libraries from jsDelivr, so an internet connection is required. Before using or deploying the app, review third-party dependencies, browser camera permissions, and the privacy requirements that apply to your use case.
-
-## Known Limitations
-
-- The algorithm relies on fixed thresholds and does not perform automatic calibration for each person.
-- Landmark quality can be affected by low light, camera angle, head movement, occlusion, or glasses.
-- The current code does not provide formal performance metrics, validation data, or a benchmark against labeled drowsiness events.
-- Yawning is only an indirect cue and does not, by itself, prove that a driver is sleepy.
-- The application is not designed, tested, or certified for use as a real vehicle safety system.
-- The current yawn-counting logic is a simple heuristic and would benefit from more robust event segmentation and testing.
-
-## Potential Improvements
-
-- Evaluate and calibrate EAR/MAR thresholds against a labeled dataset and varied lighting conditions.
-- Add explicit handling for face loss, camera errors, and denied permissions.
-- Improve yawn event segmentation to avoid counting one prolonged mouth-opening event more than once.
-- Add configurable thresholds and a short setup/calibration step.
-- Add automated tests and report precision, recall, and false-alert rates on a documented test set.
-- Add a screenshot or short demo recording to the repository after capturing the actual application running.
-
-## Acknowledgements
-
-- [MediaPipe](https://github.com/google-ai-edge/mediapipe) for browser-based face landmark technology.
-- [MediaPipe Face Mesh documentation](https://github.com/google-ai-edge/mediapipe/blob/master/docs/solutions/face_mesh.md) for the JavaScript solution reference.
-
-## Asset Attribution
-
-The two alarm audio files were carried over from the original project. Before publishing this repository publicly, confirm that you own these files or have permission to redistribute them. If their source or license is unclear, replace them with audio that is licensed for redistribution and record the attribution here.
+- Draw facial landmarks and EAR/MAR measurements on the preview for better interpretability.
+- Add a calibration step for different users and camera setups.
+- Evaluate detection performance on recorded test cases and report metrics such as precision, recall, and false-alarm rate.
+- Improve accessibility, mobile responsiveness, and user-facing instructions.
+- Deploy a demo with GitHub Pages after testing camera permissions in the target browser.
 
 ## Author
 
-Developed as an academic project exploring browser-based computer vision and rule-based drowsiness indicators.
+**Muhammad Fadhlulloh**  
+GitHub: [@fadhlulloh123](https://github.com/fadhlulloh123)
 
 ---
 
-**Disclaimer:** This software is a learning prototype, not a safety-critical product. Do not use it to decide whether it is safe to drive.
+*Developed as an academic Computer Vision project to explore browser-based drowsiness indicators using facial landmarks.*
